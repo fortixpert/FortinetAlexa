@@ -1,0 +1,351 @@
+# --------------- Information ---------------
+# v1.1 - Initial Version - March 14, 2019
+# Objective: Demonstrate that Fortinet Sec Fabric is an open platform. In this case, with Alexa.
+# Author: Ignacio Franzoni - Iberia SE Team
+# ---------------------------------------------
+
+# --------------------------------------------- Script ---------------------------------------------
+#A: Alexa, open demo
+#R:         Sure, what can I do for you?
+
+#A: How are you today?
+#R:         I'm fine, thank you. Today we are in London! Hi everyone!.
+
+#A: I think there's a problem on the network
+#R:         I am going to check the public cloud firewall, analyzing security infrastructure. Give me just one second. I do not see performance problems, because the firewall is at XXXX percent of CPU, just at XXX percent of memory and right now it has XXX active sessions. The last result of security rating, by security fabric, was XXXX points. Analyzing security problems, give me just a second. ehm. I can confirm that the problem is that there is a node that is compromised.
+
+#A: Give more info about this host
+#R:         Gathering information from the device. Give me just one second. The compromised user is called %s, belongs to the domain %s and currently I see that XXXXX. User phone, to quickly contact him, is XXXXXX. The problem is that it is compromised.
+
+#A: What's the meaning of compromise host?
+#R:         This is a device that is generating strange behavior, with suspicious traffic flows towards domains or ipes classified as malicious. Based on the analysis of said behavior, together with the intelligence provided by FortiGard, it has been determined that device has been compromised. Do you want me to quarantine this device?
+
+#A: Block this device
+#R:         Adding the device to the quarantine, we will stop any infection in the network. Give me a few seconds.
+
+#A: Thank you so much Alexa
+#R:         Your welcome. Security Fabric in action!!
+# -----------------------------------------------------------------------------------------------------------
+
+
+# --------------- Speech Synthesis Markup Language (SSML) Reference  ----------------------
+
+# https://developer.amazon.com/es/docs/custom-skills/speech-synthesis-markup-language-ssml-reference.html#emphasis
+# https://developer.amazon.com/es/docs/custom-skills/speechcon-reference-interjections-spanish.html
+# https://developer.amazon.com/es/docs/custom-skills/foley-sounds.html
+# https://docs.aws.amazon.com/es_es/polly/latest/dg/supported-ssml.html
+
+# <break time=\"1s\"/>
+# <emphasis level=\"strong\">blablabla</emphasis>
+# <amazon:effect name=\"whispered\">blablabla</amazon:effect>
+# <say-as interpret-as=\"telephone\">2122241555</say-as>
+# <lang xml:lang=\"en-US\">blablabla</lang>
+# <say-as interpret-as="interjection">magnífico</say-as>
+# -----------------------------------------------------------------------------------------------------------
+
+import requests, urllib3, json
+
+
+#suppression du warning lors de la cnx https avec certi autosigne
+from requests.packages.urllib3.exceptions import InsecureRequestWarning
+requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
+
+
+# --------------- Helpers that build all of the responses ----------------------
+
+def build_speechlet_response(title, output, reprompt_text, should_end_session):
+    return {
+        'outputSpeech': {
+            'type': 'SSML',
+            'ssml': "<speak>" + output  + "</speak>"
+        },
+        'card': {
+            'type': 'Simple',
+            'title': "SessionSpeechlet - " + title,
+            'content': "SessionSpeechlet - " + output
+        },
+        'reprompt': {
+            'outputSpeech': {
+                'type': 'PlainText',
+                'text': reprompt_text
+            }
+        },
+        'shouldEndSession': should_end_session
+    }
+
+def build_response(session_attributes, speechlet_response):
+    return {
+        'version': '1.0',
+        'sessionAttributes': session_attributes,
+        'response': speechlet_response
+    }
+
+
+# --------------- Functions that control the skill's behavior ------------------
+def get_welcome_response():
+    """ If we wanted to initialize the session to have some attributes we could
+    add those here
+    """
+    session_attributes = {}
+    card_title = "Welcome"
+    speech_output = "Sure, what can I do for you?"
+    # If the user either does not reply to the welcome message or says something
+    # that is not understood, they will be prompted again with this text.
+    reprompt_text = "test"
+    should_end_session = False
+    return build_response(session_attributes, build_speechlet_response(
+        card_title, speech_output, reprompt_text, should_end_session))
+
+
+def get_getintro_response():
+    """ If we wanted to initialize the session to have some attributes we could
+    add those here
+    """
+    session_attributes = {}
+    card_title = "GetIntro"
+    speech_output = "I'm fine, thank you. Today we are in London! Hi everyone! "
+    # If the user either does not reply to the welcome message or says something
+    # that is not understood, they will be prompted again with this text.
+    reprompt_text = ""
+    should_end_session = False
+    return build_response(session_attributes, build_speechlet_response(
+        card_title, speech_output, reprompt_text, should_end_session))
+
+
+def get_getalert_response():
+    
+    url = "https://XXXXXXXXXXXXXXX/logincheck"
+    url2 = "https://XXXXXXXXXXXXXXX/api/v2/monitor/system/resource/usage"
+    url3 = "https://XXXXXXXXXXXXXXX/api/v2/monitor/system/security-rating/select"
+
+    r = requests.session()
+    r = requests.post(url=url, verify=False, data={'username': 'admin', 'secretkey': 'XXXXXXXXX'})
+    
+    for cookie in r.cookies:
+        if cookie.name == 'ccsrftoken':
+            csrftoken = cookie.value[1:-1]
+            r.headers.update({'X-CSRFTOKEN': csrftoken})
+            r.headers.__delitem__('Transfer-Encoding')
+    
+    t = requests.get(url=url2, cookies=r.cookies, headers=r.headers, verify=False)
+    data = t.json()
+    json_data = json.loads(t.text)
+    cpu = json_data['results']['cpu'][0]['current']
+    mem = json_data['results']['mem'][0]['current']
+    sess = json_data['results']['session'][0]['current']
+
+    t2 = requests.get(url=url3, cookies=r.cookies, headers=r.headers, verify=False)
+    data2 = t2.json()
+    json_data2 = json.loads(t2.text)
+    securityauditresult = json_data2['statistics']['lastAuditScore']
+
+    print (cpu)
+    print (mem)
+    print (sess)
+    print (securityauditresult)
+
+    session_attributes = {}
+    card_title = "GetAlert"
+    speech_output = "<p>I am going to check the public cloud firewall, analyzing security infrastructure. </p> <p>Give me just one second. </p> <audio src='soundbank://soundlibrary/scifi/amzn_sfx_scifi_radar_high_ping_01'/> " \
+                    "<p>I do not see performance problems, because the firewall is at %d percent of CPU, just at %d percent of memory and right now it has %d active sessions.</p> <p>The last result of security rating, by security fabric, was %d points.</p> <p>Analyzing security problems, give me just a second. <audio src='soundbank://soundlibrary/scifi/amzn_sfx_scifi_radar_high_ping_01'/></p> <say-as interpret-as=\"interjection\">ehm</say-as> <p>I can confirm that the problem is that there is a node that is compromised. </p>" % (cpu, mem, sess, securityauditresult)   
+    reprompt_text = ""
+    should_end_session = False
+    return build_response(session_attributes, build_speechlet_response(
+        card_title, speech_output, reprompt_text, should_end_session))
+
+def get_getcompromisemeaning_response():
+    """ An example of a custom intent. Same structure as welcome message, just make sure to add this intent
+    in your alexa skill in order for it to work.
+    """
+    session_attributes = {}
+    card_title = "GetCompromiseMeaning"
+    speech_output = "<p>This is a device that is generating strange behavior, with suspicious traffic flows towards domains or ipes classified as malicious. </p><p>Based on the analysis of said behavior, together with the intelligence provided by FortiGard, it has been determined that device has been compromised. </p><p>Do you want me to quarantine this device?</p> "
+    reprompt_text = ""
+    should_end_session = False
+    return build_response(session_attributes, build_speechlet_response(
+        card_title, speech_output, reprompt_text, should_end_session))
+
+
+def get_getuserinfo_response():
+
+    url4 = "XXXXXXXXXXXXXXX"
+
+    session3 = requests.session();
+    a3 = session3.get('https://' + url4 + '/api/v1/auth/signin/', verify=False, params={'name': 'admin','password': 'XXXXXXXXX','user_type':'Windows','vdom':'root','call_type':'2'})
+    b3 = session3.get('https://' + url4 + '/', verify=False,cookies=session3.cookies)
+
+    c3 = session3.get('https://' + url4 + '/api/v1/endpoints/bookmarks/index/?vdom=root&call_type=2', verify=False,cookies=session3.cookies)
+    csrf2 = session3.cookies['csrftoken']
+
+    data3 = [('vdom', 'root'), ('call_type', '2'), ('csrfmiddlewaretoken', csrf2)]
+
+    d3 = session3.get('https://' + url4 + '/api/v1/endpoints/get/', headers={'Referer': 'https://' + url4 + '/','X-Requested-With':'XMLHttpRequest', 'Origin':'https://' + url4 + ''}, verify=False, cookies=session3.cookies, params=data3)
+
+    parseendpoints = json.loads(d3.text)
+    endpointlist = parseendpoints['data']['endpoints']
+
+    #In this lab, the ip of the host is 10.0.1.17
+
+    count = 0
+    total = len (endpointlist)
+    while count < total:
+        if parseendpoints['data']['endpoints'][count]['ip_addr'] == '10.0.1.17':
+           username = parseendpoints['data']['endpoints'][count]['username']
+           user_domain = parseendpoints['data']['endpoints'][count]['user_domain']
+           is_ems_onnet = parseendpoints['data']['endpoints'][count]['is_ems_onnet']
+           phone = parseendpoints['data']['endpoints'][count]['phone'] 
+           break
+        else:
+            count += 1
+
+    if is_ems_onnet == 1:
+        message = " is connected to the corporate network "
+    else:
+        message = " is out of corporate network "
+    
+    session_attributes = {}
+    card_title = "GetAlert"
+    speech_output = "<p>Gathering information from the device.</p><p> Give me just one second.</p> <audio src='soundbank://soundlibrary/scifi/amzn_sfx_scifi_radar_high_ping_01'/>  <p>The compromised user is called %s, belongs to the domain %s and currently I see that %s.</p> <p> User phone, to quickly contact him,  is <say-as interpret-as=\"telephone\"> %s </say-as>. </p><p>The problem is that it is compromised. </p>" % (username, user_domain, message, phone)
+    reprompt_text = ""
+    should_end_session = False
+    return build_response(session_attributes, build_speechlet_response(
+        card_title, speech_output, reprompt_text, should_end_session))
+
+def get_putcompromisequarantine_response():
+
+    session = requests.session()
+    a = session.get('https://XXXXXXXXXXXXXXX/api/v1/auth/signin/', verify=False, params={'name': 'admin','password': 'XXXXXXXXX','user_type':'Windows','vdom':'root','call_type':'2'})
+    csrf = session.cookies['csrftoken']
+    headers = {'Content-Type': 'application/json', 'Referer': 'https://XXXXXXXXXXXXXXX', 'X-CSRFToken': csrf}
+    payload = {'source':{'fgt_hostname':'Fucking Master of the universe','fgt_ip':"8.8.8.8"},'addresses':[{'ip':"10.0.1.17",'fgt_admin':'Your Boss'}]}
+    url = "https://XXXXXXXXXXXXXXX/api/v1/clients/quarantine/"
+    c = requests.post(url, json=payload, verify=False, cookies=session.cookies, headers=headers)
+    print(c.status_code)
+    print ("poniendo en cuarentena")
+
+    session_attributes = {}
+    card_title = "PutCompromiseQuarantine"
+    speech_output = "<p>Sure.</p><p> Adding the device to the quarantine, we will stop any infection in the network.</p><p> Give me a few seconds. </p> <audio src='soundbank://soundlibrary/scifi/amzn_sfx_scifi_radar_high_ping_01'/>"    
+    reprompt_text = ""
+    
+    should_end_session = False
+    return build_response(session_attributes, build_speechlet_response(
+        card_title, speech_output, reprompt_text, should_end_session))
+
+def get_putcompromiseunquarantine_response():
+    """ An example of a custom intent. Same structure as welcome message, just make sure to add this intent
+    in your alexa skill in order for it to work.
+    """
+
+    #In this lab, the ip of the host is 10.0.1.17
+
+    session = requests.session()
+    a = session.get('https://XXXXXXXXXXXXXXX/api/v1/auth/signin/', verify=False, params={'name': 'admin','password': 'XXXXXXXXX','user_type':'Windows','vdom':'root','call_type':'2'})
+    csrf = session.cookies['csrftoken']
+    headers = {'Content-Type': 'application/json', 'Referer': 'https://XXXXXXXXXXXXXXX', 'X-CSRFToken': csrf}
+    payload = {'source':{'fgt_hostname':'Fucking Master of the universe','fgt_ip':"8.8.8.8"},'addresses':[{'ip':"10.0.1.17",'fgt_admin':'Your Boss'}]}
+    url = "https://XXXXXXXXXXXXXXX/api/v1/clients/unquarantine/"
+    c = requests.post(url, json=payload, verify=False, cookies=session.cookies, headers=headers)
+
+    session_attributes = {}
+    card_title = "PutCompromiseUnQuarantine"
+    speech_output = "<p>Sure, removing the device from quarantine. </p><p>Just give me a few seconds. </p> <audio src='soundbank://soundlibrary/scifi/amzn_sfx_scifi_radar_high_ping_01'/>"
+    reprompt_text = ""
+
+    should_end_session = False
+    return build_response(session_attributes, build_speechlet_response(
+        card_title, speech_output, reprompt_text, should_end_session))
+
+
+def handle_session_end_request():
+    card_title = "Session Ended"
+    speech_output = "Your welcome. Security Fabric in action!! "
+    # Setting this to true ends the session and exits the skill.
+    should_end_session = True
+    return build_response({}, build_speechlet_response(
+        card_title, speech_output, None, should_end_session))
+
+# --------------- Events ------------------
+
+def on_session_started(session_started_request, session):
+    """ Called when the session starts.
+        One possible use of this function is to initialize specific 
+        variables from a previous state stored in an external database
+    """
+    # Add additional code here as needed
+    pass
+
+    
+
+def on_launch(launch_request, session):
+    """ Called when the user launches the skill without specifying what they
+    want
+    """
+    # Dispatch to your skill's launch message
+    return get_welcome_response()
+
+
+def on_intent(intent_request, session):
+    """ Called when the user specifies an intent for this skill """
+
+    intent = intent_request['intent']
+    intent_name = intent_request['intent']['name']
+
+    # Dispatch to your skill's intent handlers
+    if intent_name == "GetAlert":
+        return get_getalert_response()
+    elif intent_name == "GetIntro":
+        return get_getintro_response()
+    elif intent_name == "GetUserInfo":
+        return get_getuserinfo_response()
+    elif intent_name == "GetCompromiseMeaning":
+        return get_getcompromisemeaning_response()
+    elif intent_name == "PutCompromiseQuarantine":
+        return get_putcompromisequarantine_response()
+    elif intent_name == "PutCompromiseUnQuarantine":
+        return get_putcompromiseunquarantine_response()
+    elif intent_name == "AMAZON.HelpIntent":
+        return get_welcome_response()
+    elif intent_name == "AMAZON.CancelIntent" or intent_name == "AMAZON.StopIntent":
+        return handle_session_end_request()
+    else:
+        raise ValueError("Invalid intent")
+
+
+def on_session_ended(session_ended_request, session):
+    """ Called when the user ends the session.
+
+    Is not called when the skill returns should_end_session=true
+    """
+    print("on_session_ended requestId=" + session_ended_request['requestId'] +
+          ", sessionId=" + session['sessionId'])
+    # add cleanup logic here
+
+
+# --------------- Main handler ------------------
+
+def lambda_handler(event, context):
+    """ Route the incoming request based on type (LaunchRequest, IntentRequest,
+    etc.) The JSON body of the request is provided in the event parameter.
+    """
+    print("Incoming request...")
+
+    """
+    Uncomment this if statement and populate with your skill's application ID to
+    prevent someone else from configuring a skill that sends requests to this
+    function.
+    """
+    # if (event['session']['application']['applicationId'] !=
+    #         "amzn1.echo-sdk-ams.app.[unique-value-here]"):
+    #     raise ValueError("Invalid Application ID")
+
+    if event['session']['new']:
+        on_session_started({'requestId': event['request']['requestId']},
+                           event['session'])
+
+    if event['request']['type'] == "LaunchRequest":
+        return on_launch(event['request'], event['session'])
+    elif event['request']['type'] == "IntentRequest":
+        return on_intent(event['request'], event['session'])
+    elif event['request']['type'] == "SessionEndedRequest":
+        return on_session_ended(event['request'], event['session'])
