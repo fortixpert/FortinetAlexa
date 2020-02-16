@@ -1,0 +1,72 @@
+{
+    "interactionModel": {
+        "languageModel": {
+            "invocationName": "open demo",
+            "intents": [
+                {
+                    "name": "AMAZON.CancelIntent",
+                    "samples": []
+                },
+                {
+                    "name": "AMAZON.HelpIntent",
+                    "samples": [
+                        ""
+                    ]
+                },
+                {
+                    "name": "AMAZON.StopIntent",
+                    "samples": [
+                        "Thank you so much Alexa"
+                    ]
+                },
+                {
+                    "name": "AMAZON.NavigateHomeIntent",
+                    "samples": []
+                },
+                {
+                    "name": "GetAlert",
+                    "slots": [],
+                    "samples": [
+                        "I think there's a problem on the network"
+                    ]
+                },
+                {
+                    "name": "GetCompromiseMeaning",
+                    "slots": [],
+                    "samples": [
+                        "What's the meaning of compromise host"
+                    ]
+                },
+                {
+                    "name": "PutCompromiseQuarantine",
+                    "slots": [],
+                    "samples": [
+                        "Block this device"
+                    ]
+                },
+                {
+                    "name": "GetIntro",
+                    "slots": [],
+                    "samples": [
+                        "How are you today"
+                    ]
+                },
+                {
+                    "name": "PutCompromiseUnQuarantine",
+                    "slots": [],
+                    "samples": [
+                        "Unblock this device"
+                    ]
+                },
+                {
+                    "name": "GetUserInfo",
+                    "slots": [],
+                    "samples": [
+                        "Give more info about this host"
+                    ]
+                }
+            ],
+            "types": []
+        }
+    }
+}
