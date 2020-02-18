@@ -14,6 +14,7 @@ This use case is build to demonstrate how to get information from FortiGate devi
 ## How it works:
 Every time that we do questions or an order to Alexa device, an intent has been executed calling an AWS Lambda section into out function. Every section can do different things, like put in quarantine an user, get information from FG, etc... Remember that the information regarding API is on fndn.fortinet.net website.
 
+![Image of Process](https://github.com/fortixpert/FortinetAlexa/blob/master/ProcessFlow.png)
 
 ## Step-by-step
 
